@@ -10,7 +10,7 @@ import time, os
 def order_robots():
     """Automates the ordering process of a robot using data from a CSV file and exports the images as a PDF."""
     browser.configure(
-        browser_engine='msedge',
+        # browser_engine='msedge',
         slowmo=100,
     )
     page = open_the_intranet_website("https://robotsparebinindustries.com/#/robot-order")

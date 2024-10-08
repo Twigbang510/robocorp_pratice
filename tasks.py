@@ -12,7 +12,7 @@ def insert_data_to_form():
     
     # Configure the browser to use 'msedge' with a slow-motion effect to simulate human-like interaction.
     browser.configure(
-        browser_engine='msedge',
+        # browser_engine='msedge',
         headless = False,
         slowmo=100,
     )
