@@ -5,6 +5,8 @@ from RPA.Excel.Files import Files
 from RPA.Tables import Tables
 from RPA.Browser.Selenium import Selenium
 from RPA.PDF import PDF
+from PIL import Image
+
 import time, os
 @task
 def order_robots():
@@ -80,14 +82,56 @@ def retry_on_error(page, retry_selector, max_retries=5):
     if retry_count == max_retries:
         print("Max retries reached. Proceeding with caution.")
 
+def merge_images_and_center(image_files, output_path, page_width=600):
+    """Merge images from multiple images"""
+    images = [Image.open(image) for image in image_files]
+
+    heights = [img.height for img in images]
+    total_height = sum(heights)
+    
+    merged_image = Image.new(
+        'RGB', 
+        (page_width, total_height), 
+        (255, 255, 255) #white background
+    ) 
+
+    y_offset = 0
+    for img in images:
+        x_offset = (page_width - img.width) // 2
+        
+        merged_image.paste(img, (x_offset, y_offset))
+        y_offset += img.height
+
+    # Save the merged image
+    merged_image.save(output_path)
+
+def generate_pdf(order_id, order_details_html, image_files, folder_path):
+    """Generates PDF for a given order details page and image files"""
+    merged_image_path = f"{folder_path}/merged_robot_image_{order_id}.png"
+    merge_images_and_center(image_files, merged_image_path)
+
+    html_content = f"""
+    <html>
+    <body>
+        <h1>Order Details: {order_id}</h1>
+        {order_details_html}
+        <img src="{merged_image_path}" style="width:100%;">
+    </body>
+    </html>
+    """
+
+    pdf = PDF()
+    pdf.html_to_pdf(html_content, f"order_details/{order_id}.pdf")
+
 def get_order_details(page, order_id):
+    # Get the order details in HTML format
     order_details = page.locator('#receipt').inner_html()
+
     folder_path = 'order_images'
     robot_images = download_images_from_div(page, folder_path)
-    pdf = PDF()
-    pdf.html_to_pdf(order_details, f"order_details/{order_id}.pdf")
-    pdf.add_files_to_pdf(robot_images, f"order_details/{order_id}.pdf", append=True)
 
+    generate_pdf(order_id, order_details, robot_images, folder_path)
+    
 def download_images_from_div(page, folder_path, div_id='robot-preview-image'):
     os.makedirs(folder_path, exist_ok=True)
     image_elements = page.locator(f'#{div_id} img').all()
