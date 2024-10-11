@@ -15,3 +15,5 @@ temp/
 testrun/*
 .~lock*
 *.pkl
+order_details/
+order_images/

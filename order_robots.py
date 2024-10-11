@@ -6,7 +6,7 @@ from RPA.Tables import Tables
 from RPA.Browser.Selenium import Selenium
 from RPA.PDF import PDF
 from PIL import Image
-
+from RPA.Assistant import Assistant
 import time, os
 @task
 def order_robots():
@@ -42,8 +42,8 @@ def fill_order(page, row):
     fields = {
         'custom-select': 'Head',
         'radio_body': 'Body', 
-        'Enter the part number for the legs': 'Legs',
-        'Shipping address': 'Address'
+        'input[type="number"].form-control': 'Legs',
+        'input[type="text"].form-control': 'Address'
     }
     order_id = row.get('Order number', '')
     
@@ -66,12 +66,12 @@ def handle_field(page, selector, value):
                 page.click(f"input[type='radio'][name='body'][value='{value}']")
             except Exception as e:
                 print(f"Error selecting radio button with value '{value}': {e}")
-        case 'Enter the part number for the legs' | 'Shipping address':
-            page.get_by_placeholder(selector).fill(str(value))
+        case 'input[type="number"].form-control' | 'input[type="text"].form-control':
+            page.fill(selector,str(value))        
         case _:
             page.fill(selector, str(value))
 
-def retry_on_error(page, retry_selector, max_retries=5):
+def retry_on_error(page, retry_selector, max_retries=10):
     retry_count = 0
     while page.locator('.alert.alert-danger').is_visible() and retry_count < max_retries:
         print(f"Internal Server Error detected, retrying... Attempt {retry_count + 1}")
