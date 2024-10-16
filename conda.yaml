@@ -14,5 +14,7 @@ dependencies:
     - robocorp==2.0.1             # https://pypi.org/project/robocorp
     - robocorp-browser==2.3.3     # https://pypi.org/project/robocorp-browser
     - Pillow
-    # - dop-rpaframework==1.2.3
+    # - dop-rpaframework==1.2.4
     - rpaframework-assistant      # https://pypi.org/project/rpaframework-assistant 
+    - deep-translator
+    - validators

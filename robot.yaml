@@ -6,6 +6,8 @@ tasks:
     shell: python -m robocorp.tasks run tasks.py
   OrderRobots:
     shell: python -m robocorp.tasks run order_robots.py
+  GetLyrics:
+    shell: python -m robocorp.tasks run get_lyrics.py
 
 environmentConfigs:
   - environment_windows_amd64_freeze.yaml
