@@ -5,26 +5,23 @@ from RPA.Tables import Tables
 from RPA.Browser.Selenium import Selenium
 from RPA.PDF import PDF
 from PIL import Image
-from RPA.Assistant import Assistant
 import time, os
 from deep_translator import GoogleTranslator
 import validators
+from DOP.RPA.Asset import Asset
 
 LYRICS_URL = 'https://www.lyrics.com/'
 RETRIES_COUNT = 4
 browser = Selenium()
-assistant = Assistant()
+assets = Asset()
+
 @task
 def get_browser():
     """Opens a new browser window."""
     try: 
         browser.open_available_browser(LYRICS_URL)
-        login_choice = show_guest_or_login()
-        if login_choice == 'Login':
+        if check_login():
             login()
-        else:
-            print("Continuing as Guest")
-            
         get_lyrics()
     except Exception as e:
         print(f"Error opening browser: {e}")
@@ -32,30 +29,9 @@ def get_browser():
 
 ################################################################
 # LOGIN
-def show_guest_or_login():
-    assistant.add_heading("Choose mode")
-    assistant.add_radio_buttons(
-        name = "Mode",
-        options = ["Guest", "Login"],
-        default="Guest",
-        label= "Mode"
-    )
-    assistant.add_submit_buttons('Submit')
-    choice = assistant.run_dialog()
-    print(choice)
-    return choice.get('Mode')    
-
-def login_form():
-    """Requests user input."""
-    assistant.add_heading('Login')
-    assistant.add_text_input('username', 'username', 'Enter username')
-    assistant.add_password_input(
-        name='password', 
-        label='password', 
-        placeholder='Enter password'
-    )
-    assistant.add_submit_buttons('Login')
-    return assistant.run_dialog()
+def check_login():
+    """Checks if the user is already logged in."""
+    return browser.is_element_visible("id:user-login")
 
 def perform_login(username, password):
     """Performs login using provided username and password."""
@@ -69,8 +45,9 @@ def login():
     retries = 0
     while retries < RETRIES_COUNT:
         # Get login credentials from user
-        form_data = login_form()
-        username, password = form_data.get('username'), form_data.get('password')
+        assets_data = assets.get_asset('lyrics_user').get('value')
+        
+        username, password = assets_data.get('username'), assets_data.get('password')
         
         if not username or not password:
             print("Login cancelled")
@@ -93,26 +70,19 @@ def login():
 # GET LYRICS FROM INPUT
 def get_lyrics():
     """Navigates to the Lyrics.com search page and retrieves lyrics for a specified song."""
-    song_name_or_url = search_form().get('song_name_or_url')
     title = None 
-    song_selected = None 
+    assets_data = assets.get_asset('lyrics_user').get('value')
 
-    if not validators.url(song_name_or_url):
-        browser.input_text('css:input#search.ui-autocomplete-input', song_name_or_url)
-        browser.click_element('css:button#page-word-search-button')
-        browser.wait_until_element_is_visible('class:best-matches', timeout=10)
+    browser.input_text('css:input#search.ui-autocomplete-input', assets_data.get('song_name'))
+    browser.click_element('css:button#page-word-search-button')
+    browser.wait_until_element_is_visible('class:best-matches', timeout=10)
 
-        song_list = get_song_list()
-        song_selected = display_song_list(song_list)
+    song_list = get_song_list()
+    song_selected = song_list[0]
+    if song_selected:
+        browser.go_to(song_selected['url'])
+        title = song_selected.get('title', None)
 
-        if song_selected:
-            browser.go_to(song_selected['url'])
-            title = song_selected.get('title', None)
-    else:
-        browser.go_to(song_name_or_url)
-        browser.wait_until_element_is_visible('css:h1#lyric-title-text.lyric-title', timeout=10)
-        title_element = browser.find_element('css:h1#lyric-title-text.lyric-title')
-        title = title_element.text
     lyrics = get_lyrics_from_song()
     if lyrics:
         final_title = song_selected['title'] if song_selected else title
@@ -120,13 +90,6 @@ def get_lyrics():
         save_lyrics_to_file(translated_lyrics, final_title)
     else:
         print("Lyrics not found.")
-
-def search_form():
-    assistant.add_heading("Search for names...")
-    assistant.add_text_input("song_name_or_url", "URL/Song name", "Enter song name or URL to search")
-    assistant.add_submit_buttons("Search")
-    song_name_or_url = assistant.run_dialog()
-    return song_name_or_url
 
 def get_song_list():
     song_list = []
@@ -153,30 +116,6 @@ def get_song_list():
             "artist_name": artist_name,
         })
     return song_list
-
-def display_song_list(song_list):
-    assistant.add_heading("Choose a song from the list")
-    song_options = []
-    for song in song_list:
-        option_label = f"{song['title']} by {song['artist_name']}"
-        song_options.append(option_label)
-        assistant.add_text(f"Album: {song['album_title']}")
-        assistant.add_text(f"Artist: {song['artist_name']}")
-        if song.get('image_url'):
-            assistant.add_image(url_or_path=song['image_url'], width=100, height=100)
-
-    assistant.add_radio_buttons(
-        name='selected_song',
-        options=song_options,
-        label="Select a song to retrieve lyrics"
-    )
-    assistant.add_submit_buttons("Submit")
-    selected_song_label = assistant.run_dialog().get('selected_song')
-
-    for song in song_list:
-        if f"{song['title']} by {song['artist_name']}" == selected_song_label:
-            return song
-    return None
 
 def get_lyrics_from_song():
     """Retrieves lyrics from the specified song URL."""

@@ -6,15 +6,12 @@ channels:
   - conda-forge
 
 dependencies:
-  - python=3.10.12                # https://pyreadiness.org/3.10
-  - pip=23.2.1                    # https://pip.pypa.io/en/stable/news
-  - robocorp-truststore=0.8.0     # https://pypi.org/project/robocorp-truststore/
+  - python=3.9.13                     # https://pyreadiness.org/3.9/
+  - pip=22.1.2   
   - pip:
-    - rpaframework==28.5.1        # https://rpaframework.org/releasenotes.html
-    - robocorp==2.0.1             # https://pypi.org/project/robocorp
-    - robocorp-browser==2.3.3     # https://pypi.org/project/robocorp-browser
-    - Pillow
-    # - dop-rpaframework==1.2.4
-    - rpaframework-assistant      # https://pypi.org/project/rpaframework-assistant 
+    - rpaframework==23.0.0            # https://rpaframework.org/releasenotes.html
+    - dop-rpaframework==1.2.4 
+    - robocorp
+    - robocorp-browser==2.3.3
     - deep-translator
     - validators
