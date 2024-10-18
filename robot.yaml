@@ -28,14 +28,19 @@ ignoreFiles:
 
 arguments:
   input: 
-    - name: demo
-    - type: String 
-    - required: True 
-    - defaultValue: null
-    - description: Hướng dẫn thao tác (Mô tả cho keyword)
+    - name: data
+      type: File 
+      required: False 
+      defaultValue: null
+      description: Data file
+    - name: id_data
+      type: String
+      required: False 
+      defaultValue: null
+      description: ID data
   output:
     - name: outPutDemo
-    - type: String 
-    - required: True 
-    - defaultValue: null
-    - description: Kết quả demo 
+      type: String 
+      required: False 
+      defaultValue: null
+      description: Kết quả demo 
