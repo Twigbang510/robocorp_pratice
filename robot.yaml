@@ -31,16 +31,16 @@ arguments:
     - name: data
       type: File 
       required: False 
-      defaultValue: null
+      defaultValue: 
       description: Data file
     - name: id_data
       type: String
       required: False 
-      defaultValue: null
+      defaultValue: 
       description: ID data
   output:
     - name: outPutDemo
       type: String 
       required: False 
-      defaultValue: null
+      defaultValue: 
       description: Kết quả demo 
