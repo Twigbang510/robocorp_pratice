@@ -29,7 +29,7 @@ ignoreFiles:
 
 arguments:
   input: 
-    - name: data
+    - name: data_json
       type: File 
       required: False 
       defaultValue: 
@@ -39,6 +39,11 @@ arguments:
       required: False 
       defaultValue: 
       description: ID data
+    - name: org_code
+      type: String
+      required: False 
+      defaultValue: 
+      description: Organization code
   output:
     - name: outPutDemo
       type: String 
