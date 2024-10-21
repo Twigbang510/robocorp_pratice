@@ -1,0 +1,26 @@
+{
+    "data_json": {
+        "name": "data_json",
+        "description": "Json Data",
+        "type": "File",
+        "direction": "IN",
+        "value": "",
+        "required": false
+    },
+    "id_data": {
+        "name": "id_data",
+        "description": "Data Id",
+        "type": "Long",
+        "direction": "IN",
+        "value": "",
+        "required": false
+    },    
+    "org_code": {
+        "name": "org_code",
+        "description": "Organization Code",
+        "type": "String",
+        "direction": "IN",
+        "value": "",
+        "required": false
+    }
+}
