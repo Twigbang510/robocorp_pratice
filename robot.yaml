@@ -44,9 +44,9 @@ arguments:
       required: False 
       defaultValue: 
       description: Organization code
-  output:
-    - name: output_file
-      type: File 
-      required: False 
-      defaultValue: 
-      description: Output file
+  # output:
+  #   - name: output_file
+  #     type: File 
+  #     required: False 
+  #     defaultValue: 
+  #     description: Output file
