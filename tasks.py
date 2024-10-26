@@ -9,12 +9,13 @@ import time, os
 from deep_translator import GoogleTranslator
 import validators
 from DOP.RPA.Asset import Asset
+from DOP.RPA.ProcessArgument import ProcessArgument
 
 LYRICS_URL = 'https://www.lyrics.com/'
 RETRIES_COUNT = 4
 browser = Selenium()
 assets = Asset()
-
+args = ProcessArgument()
 @task
 def get_browser():
     """Opens a new browser window."""
@@ -45,9 +46,10 @@ def login():
     retries = 0
     while retries < RETRIES_COUNT:
         # Get login credentials from user
-        assets_data = assets.get_asset('lyrics_user').get('value')
-        
-        username, password = assets_data.get('username'), assets_data.get('password')
+        username = args.get_in_arg("username")['value']
+        password = args.get_in_arg("password")['value']
+        # assets_data = assets.get_asset('lyrics_user').get('value')
+        # username, password = assets_data.get('username'), assets_data.get('password')
         
         if not username or not password:
             print("Login cancelled")
@@ -71,9 +73,9 @@ def login():
 def get_lyrics():
     """Navigates to the Lyrics.com search page and retrieves lyrics for a specified song."""
     title = None 
-    assets_data = assets.get_asset('lyrics_user').get('value')
+    song_name = args.get_in_arg("song_name")['value']
 
-    browser.input_text('css:input#search.ui-autocomplete-input', assets_data.get('song_name'))
+    browser.input_text('css:input#search.ui-autocomplete-input', song_name)
     browser.click_element('css:button#page-word-search-button')
     browser.wait_until_element_is_visible('class:best-matches', timeout=10)
 

@@ -3,11 +3,11 @@
 
 tasks:
   InputForm:
-    shell: python -m robocorp.tasks run tasks.py
+    shell: python -m robocorp.tasks run input_form.py
   OrderRobots:
     shell: python -m robocorp.tasks run order_robots.py
   GetLyrics:
-    shell: python -m robocorp.tasks run get_lyrics.py
+    shell: python -m robocorp.tasks run tasks.py
   TestDop:
     shell: python -m robocorp.tasks run dop_pratice.py
 
@@ -34,16 +34,21 @@ arguments:
     #   required: False 
     #   defaultValue: 
     #   description: Data file
-    - name: id_data
+    - name: username
       type: String
-      required: False 
+      required: True 
       defaultValue: 
-      description: ID data
-    - name: org_code
+      description: Username
+    - name: password
       type: String
-      required: False 
+      required: True 
       defaultValue: 
-      description: Organization code
+      description: Password
+    - name: song_name
+      type: String
+      required: True 
+      defaultValue: Test
+      description: Name of song
   # output:
   #   - name: output_file
   #     type: File 
