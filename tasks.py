@@ -1,101 +1,145 @@
 from robocorp.tasks import task
-from robocorp import browser
 from RPA.HTTP import HTTP
 from RPA.Excel.Files import Files
 from RPA.Tables import Tables
 from RPA.Browser.Selenium import Selenium
 from RPA.PDF import PDF
+from PIL import Image
 import time, os
+from deep_translator import GoogleTranslator
+import validators
+from DOP.RPA.Asset import Asset
+
+LYRICS_URL = 'https://www.lyrics.com/'
+RETRIES_COUNT = 4
+browser = Selenium()
+assets = Asset()
+
 @task
-def insert_data_to_form():
-    """Automates data insertion into a web form using data from an Excel file, captures screenshots, and exports the images as a PDF."""
-    
-    # Configure the browser to use 'msedge' with a slow-motion effect to simulate human-like interaction.
-    browser.configure(
-        # browser_engine='msedge',
-        headless = False,
-        slowmo=100,
-    )
-    
-    #Open the target intranet website.
-    page = open_the_intranet_website("https://www.rpachallenge.com/")
-    
-    # Ensure 'images' directory exists
-    os.makedirs('images', exist_ok=True)
-    
-    # Read data from the Excel file and fill the web form with each row of data.
-    fill_form_with_excel_data(page)
-    
-    # Export captured screenshots as a single PDF document.
-    export_pdf()
-    pass
-    
-
-def open_the_intranet_website(url):
-    """Opens the intranet website using the configured browser and returns the page object."""
-    browser.goto(url)
-    return browser.page()
-
-def download_excel_file(url, filename):
-    """Downloads an Excel file from a specified URL."""
-    http = HTTP()
-    http.download(url, filename)
-
-def fill_form_with_excel_data(page):
-    """Reads data from an Excel file and fills the web form for each row."""
-    excel = Files()
-    try:
-        # Open the Excel workbook once
-        excel.open_workbook("challenge.xlsx")
-        worksheet = excel.read_worksheet_as_table("data", header=True)
-        
-        # Iterate through each row in the worksheet and fill the form
-        for i, row in enumerate(worksheet):
-            print(f"Processing row {i}: {row}")
-            fill_form(page, row)
-    finally:
-        # Always close the workbook
-        excel.close_workbook()
-
-def fill_form(page, row):
-    """Fills the web form with data from a single row of the Excel worksheet and takes a screenshot."""
-    # Define form field names that correspond to both Excel keys and the form element names
-    fields = {
-        'labelAddress': 'Address',
-        'labelFirstName': 'First Name',
-        'labelEmail': 'Email',
-        'labelPhone': 'Phone Number',
-        'labelRole': 'Role in Company',
-        'labelCompanyName': 'Company Name',
-        'labelLastName': 'Last Name'
-    }
-    
-    try:
-        # Fill each form field using the data from the row
-        for field_name, key in fields.items():
-            selector = f"[ng-reflect-name='{field_name}']"
-            page.fill(selector, str(row.get(key, '')))
-        
-        # Take a screenshot of the form filled with the current row's data
-        screenshot_path = f"images/{row.get('First Name', 'unknown')}.png"
-        page.screenshot(path=screenshot_path)
-        
-        # Attempt to click the submit button
-        page.click(".btn.uiColorButton")
-        time.sleep(1)  # Wait for a second to allow the form to process
+def get_browser():
+    """Opens a new browser window."""
+    try: 
+        browser.open_available_browser(LYRICS_URL)
+        if check_login():
+            login()
+        get_lyrics()
     except Exception as e:
-        print(f"Error during form filling: {e}")
+        print(f"Error opening browser: {e}")
+        return False
 
-def export_pdf():
-    """Combines all screenshots in the 'images' directory into a single PDF document."""
-    pdf = PDF()
-    
-    # Get a list of all image files in the 'images' directory with specified extensions
-    image_files = [os.path.join('images', file) for file in os.listdir('images') if file.lower().endswith(('.png', '.jpg', '.jpeg', '.bmp', '.tiff'))]
-    
-    # Add the image files to a new PDF document and save it with the specified name
-    if image_files:  # Ensure there are images to add
-        pdf.add_files_to_pdf(image_files, 'output_pdf.pdf')
+################################################################
+# LOGIN
+def check_login():
+    """Checks if the user is already logged in."""
+    return browser.is_element_visible("id:user-login")
+
+def perform_login(username, password):
+    """Performs login using provided username and password."""
+    browser.click_element("id:user-login")
+    time.sleep(1)
+    browser.input_text_when_element_is_visible("css:#fld-uname.fw", username)
+    browser.input_text_when_element_is_visible("css:#fld-upass.fw", password)
+    browser.click_element("css:button[type=submit].lrg")
+
+def login():
+    retries = 0
+    while retries < RETRIES_COUNT:
+        # Get login credentials from user
+        assets_data = assets.get_asset('lyrics_user').get('value')
+        
+        username, password = assets_data.get('username'), assets_data.get('password')
+        
+        if not username or not password:
+            print("Login cancelled")
+            return False
+        
+        # Perform login
+        perform_login(username, password)
+
+        # Check if there is an error message indicating failed login
+        if not browser.is_element_visible("css:p.err"):
+            return True  # Login successful
+
+        print("Login failed. Retrying...")
+        retries += 1
+
+    print("Max retries reached. Login failed.")
+    return False
+
+################################################################
+# GET LYRICS FROM INPUT
+def get_lyrics():
+    """Navigates to the Lyrics.com search page and retrieves lyrics for a specified song."""
+    title = None 
+    assets_data = assets.get_asset('lyrics_user').get('value')
+
+    browser.input_text('css:input#search.ui-autocomplete-input', assets_data.get('song_name'))
+    browser.click_element('css:button#page-word-search-button')
+    browser.wait_until_element_is_visible('class:best-matches', timeout=10)
+
+    song_list = get_song_list()
+    song_selected = song_list[0]
+    if song_selected:
+        browser.go_to(song_selected['url'])
+        title = song_selected.get('title', None)
+
+    lyrics = get_lyrics_from_song()
+    if lyrics:
+        final_title = song_selected['title'] if song_selected else title
+        translated_lyrics = translate_lyrics(lyrics)
+        save_lyrics_to_file(translated_lyrics, final_title)
     else:
-        print("No images found to add to the PDF.")
- 
+        print("Lyrics not found.")
+
+def get_song_list():
+    song_list = []
+    song_elements = browser.find_elements("css:.best-matches .bm-case")
+    for song in song_elements:
+        song_title_element = song.find_element("css selector", ".bm-label a")
+        song_title = song_title_element.text.strip()
+        song_url = song_title_element.get_attribute("href")
+
+        image_element = song.find_element("css selector", ".album-thumb img")
+        image_url = image_element.get_attribute("src") if image_element else None
+
+        album_elements = song.find_elements("css selector", ".bm-label b a")
+        album_title = album_elements[1].text if len(album_elements) > 1 else "No album"
+
+        artist_element = song.find_elements("css selector", ".bm-label a")[-1]
+        artist_name = artist_element.text.strip()
+
+        song_list.append({
+            "title": song_title,
+            "url": song_url,
+            "image_url": image_url,
+            "album_title": album_title,
+            "artist_name": artist_name,
+        })
+    return song_list
+
+def get_lyrics_from_song():
+    """Retrieves lyrics from the specified song URL."""
+    try:
+        browser.wait_until_element_is_visible('id:lyric-body-text', timeout=10)
+        lyrics_element = browser.find_element('id:lyric-body-text')
+        lyrics = lyrics_element.text.strip()
+        return lyrics
+    except Exception as e:
+        print(f"Error retrieving lyrics: {e}")
+        return None
+    
+def translate_lyrics(lyrics):
+    translated = GoogleTranslator(source='auto', target='vi').translate(lyrics)
+    return translated
+
+def save_lyrics_to_file(lyrics_text, song_title):
+    """Saves lyrics to a file with the specified title."""
+    file_name = f'{song_title}.txt'
+    file_path = os.path.join(os.getcwd(), file_name)
+    try:
+        # Open the file in write mode and save the lyrics
+        with open(file_path, 'w', encoding='utf-8') as file:
+            file.write(lyrics_text)
+        print(f"Lyrics saved to {file_path}")
+    except Exception as e:
+        print(f"Error saving lyrics to file: {e}")

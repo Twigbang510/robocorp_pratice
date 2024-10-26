@@ -45,8 +45,8 @@ arguments:
       defaultValue: 
       description: Organization code
   output:
-    - name: outPutDemo
-      type: String 
+    - name: output_file
+      type: File 
       required: False 
       defaultValue: 
-      description: Kết quả demo 
+      description: Output file
