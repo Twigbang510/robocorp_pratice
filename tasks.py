@@ -100,7 +100,8 @@ def attempt_login():
 def get_lyrics():
     """Navigates to the Lyrics.com search page and retrieves lyrics for a specified song."""
     try:
-        song_name = args.get_in_arg("song_name")['value']
+        # song_name = args.get_in_arg("song_name")['value']
+        song_name = 'Test'
         enter_text_in_element('css:input#search.ui-autocomplete-input', song_name)
         browser.click_element('css:button#page-word-search-button')
         browser.wait_until_element_is_visible('class:best-matches', timeout=10)
