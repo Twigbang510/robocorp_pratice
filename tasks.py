@@ -167,7 +167,7 @@ def save_lyrics_to_file(lyrics_text, song_title):
     try:
         with open(file_path, 'w', encoding='utf-8') as file:
             file.write(lyrics_text)
-        args.set_out_arg('trans_song', file_path)
+        # args.set_out_arg('trans_song', file_path)
         LOGGER.info(f"Lyrics saved to {file_path}")
     except Exception as e:
         LOGGER.error(f"Error saving lyrics to file: {e}")

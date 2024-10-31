@@ -51,9 +51,9 @@ arguments:
       required: True 
       defaultValue: Test
       description: Name of song
-  output:
-    - name: trans_song
-      type: File 
-      required: False 
-      defaultValue: 
-      description: Output file
+  # output:
+  #   - name: trans_song
+  #     type: File 
+  #     required: False 
+  #     defaultValue: 
+  #     description: Output file
