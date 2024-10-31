@@ -74,9 +74,10 @@ def attempt_login():
     retries = 0
     while retries < RETRIES_COUNT:
         # Get login credentials from user
-        username = args.get_in_arg("username")['value']
-        password = args.get_in_arg("password")['value']
-        
+        # username = args.get_in_arg("username")['value']
+        # password = args.get_in_arg("password")['value']
+        username = 'twigbang'
+        password = 'truongproghe'
         if not username or not password:
             LOGGER.debug("Login cancelled due to missing credentials.")
             raise LoginError("Login cancelled by user")
