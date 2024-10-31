@@ -10,6 +10,8 @@ tasks:
     shell: python -m robocorp.tasks run order_robots.py
   TestDop:
     shell: python -m robocorp.tasks run dop_pratice.py
+  TestWin:
+    shell: python -m robocorp.tasks run window.py
 
 condaConfigFile: conda.yaml
 environmentConfigs:
@@ -49,9 +51,9 @@ arguments:
       required: True 
       defaultValue: Test
       description: Name of song
-  # output:
-  #   - name: output_file
-  #     type: File 
-  #     required: False 
-  #     defaultValue: 
-  #     description: Output file
+  output:
+    - name: trans_song
+      type: File 
+      required: False 
+      defaultValue: 
+      description: Output file

@@ -1,32 +1,55 @@
 from robocorp.tasks import task
-from RPA.HTTP import HTTP
 from RPA.Excel.Files import Files
-from RPA.Tables import Tables
 from RPA.Browser.Selenium import Selenium
-from RPA.PDF import PDF
-from PIL import Image
-import time, os
+import time, os, sys
 from deep_translator import GoogleTranslator
 import validators
 from DOP.RPA.Asset import Asset
 from DOP.RPA.ProcessArgument import ProcessArgument
+import logging
+from RPA.Desktop.Windows import Windows
 
+# Constants
 LYRICS_URL = 'https://www.lyrics.com/'
 RETRIES_COUNT = 4
+
+# Initialize components
 browser = Selenium()
 assets = Asset()
 args = ProcessArgument()
+windows = Windows()
+stdout = logging.StreamHandler(sys.stdout)
+
+# Set up logging
+logging.basicConfig(
+    level=logging.DEBUG,
+    format="[{%(filename)s:%(lineno)d} %(levelname)s - %(message)s",
+    handlers=[stdout],
+)
+LOGGER = logging.getLogger(__name__)
+
+class LoginError(Exception):
+    """Raised when login fails after retries."""
+    pass
 @task
+def main():
+    try:
+        get_browser()
+        if check_login():
+            attempt_login()
+        get_lyrics()
+    except Exception as e:
+        LOGGER.error(f"Error when running task: {e}")
+    finally:
+        browser.close_all_browsers()
+    
 def get_browser():
     """Opens a new browser window."""
     try: 
         browser.open_available_browser(LYRICS_URL)
-        if check_login():
-            login()
-        get_lyrics()
     except Exception as e:
-        print(f"Error opening browser: {e}")
-        return False
+        LOGGER.error(f"Error opening browser: {e}")
+        return SystemError(f"Error opening browser: {e}")
 
 ################################################################
 # LOGIN
@@ -36,112 +59,127 @@ def check_login():
 
 def perform_login(username, password):
     """Performs login using provided username and password."""
-    browser.click_element("id:user-login")
-    time.sleep(1)
-    browser.input_text_when_element_is_visible("css:#fld-uname.fw", username)
-    browser.input_text_when_element_is_visible("css:#fld-upass.fw", password)
-    browser.click_element("css:button[type=submit].lrg")
-
-def login():
+    try:
+        browser.click_element("id:user-login")
+        time.sleep(1)
+        enter_text_in_element("css:#fld-uname.fw", username)
+        enter_text_in_element("css:#fld-upass.fw", password)
+        browser.click_element("css:button[type=submit].lrg")
+    except Exception as e:
+        LOGGER.error(f"Error performing login: {e}")
+        raise LoginError("Login attempt failed")
+    
+def attempt_login():
+    """Attempts to login with retries if login fails."""
     retries = 0
     while retries < RETRIES_COUNT:
         # Get login credentials from user
         username = args.get_in_arg("username")['value']
         password = args.get_in_arg("password")['value']
-        # assets_data = assets.get_asset('lyrics_user').get('value')
-        # username, password = assets_data.get('username'), assets_data.get('password')
         
         if not username or not password:
-            print("Login cancelled")
-            return False
-        
-        # Perform login
-        perform_login(username, password)
+            LOGGER.debug("Login cancelled due to missing credentials.")
+            raise LoginError("Login cancelled by user")
 
-        # Check if there is an error message indicating failed login
-        if not browser.is_element_visible("css:p.err"):
-            return True  # Login successful
+        try:
+            perform_login(username, password)
+            if not browser.is_element_visible("css:p.err"):
+                LOGGER.info("Login successful.")
+                return
+            else:
+                LOGGER.warning(f"Login failed on attempt {retries + 1}")
+        except LoginError:
+            retries += 1
+            time.sleep(1)
 
-        print("Login failed. Retrying...")
-        retries += 1
-
-    print("Max retries reached. Login failed.")
-    return False
-
+    LOGGER.error("Max retries reached. Login failed.")
+    raise LoginError("Exceeded maximum login attempts")
 ################################################################
 # GET LYRICS FROM INPUT
 def get_lyrics():
     """Navigates to the Lyrics.com search page and retrieves lyrics for a specified song."""
-    title = None 
-    song_name = args.get_in_arg("song_name")['value']
+    try:
+        song_name = args.get_in_arg("song_name")['value']
+        enter_text_in_element('css:input#search.ui-autocomplete-input', song_name)
+        browser.click_element('css:button#page-word-search-button')
+        browser.wait_until_element_is_visible('class:best-matches', timeout=10)
 
-    browser.input_text('css:input#search.ui-autocomplete-input', song_name)
-    browser.click_element('css:button#page-word-search-button')
-    browser.wait_until_element_is_visible('class:best-matches', timeout=10)
+        song_list = get_song_list()
+        if not song_list:
+            LOGGER.warning("No songs found.")
+            return
 
-    song_list = get_song_list()
-    song_selected = song_list[0]
-    if song_selected:
-        browser.go_to(song_selected['url'])
-        title = song_selected.get('title', None)
+        song_selected = song_list[0]
+        if song_selected:
+            browser.go_to(song_selected['url'])
 
-    lyrics = get_lyrics_from_song()
-    if lyrics:
-        final_title = song_selected['title'] if song_selected else title
-        translated_lyrics = translate_lyrics(lyrics)
-        save_lyrics_to_file(translated_lyrics, final_title)
-    else:
-        print("Lyrics not found.")
+        lyrics = get_lyrics_from_song()
+        if lyrics:
+            translated_lyrics = translate_lyrics(lyrics)
+            save_lyrics_to_file(translated_lyrics, song_selected.get('title', song_name))
+        else:
+            LOGGER.warning("Lyrics not found.")
+    except Exception as e:
+        LOGGER.error(f"Error retrieving lyrics: {e}")
 
 def get_song_list():
-    song_list = []
-    song_elements = browser.find_elements("css:.best-matches .bm-case")
-    for song in song_elements:
-        song_title_element = song.find_element("css selector", ".bm-label a")
-        song_title = song_title_element.text.strip()
-        song_url = song_title_element.get_attribute("href")
-
-        image_element = song.find_element("css selector", ".album-thumb img")
-        image_url = image_element.get_attribute("src") if image_element else None
-
-        album_elements = song.find_elements("css selector", ".bm-label b a")
-        album_title = album_elements[1].text if len(album_elements) > 1 else "No album"
-
-        artist_element = song.find_elements("css selector", ".bm-label a")[-1]
-        artist_name = artist_element.text.strip()
-
-        song_list.append({
-            "title": song_title,
-            "url": song_url,
-            "image_url": image_url,
-            "album_title": album_title,
-            "artist_name": artist_name,
-        })
-    return song_list
+    """Retrieves the list of songs from the search results."""
+    try:
+        song_list = []
+        song_elements = browser.find_elements("css:.best-matches .bm-case")
+        for song in song_elements:
+            song_title_element = song.find_element("css selector", ".bm-label a")
+            song_url = song_title_element.get_attribute("href")
+            album_elements = song.find_elements("css selector", ".bm-label b a")
+            artist_element = song.find_elements("css selector", ".bm-label a")[-1]
+            song_list.append({
+                "title": song_title_element.text.strip(),
+                "url": song_url,
+                "image_url": song.find_element("css selector", ".album-thumb img").get_attribute("src"),
+                "album_title": album_elements[1].text if len(album_elements) > 1 else "No album",
+                "artist_name": artist_element.text.strip(),
+            })
+        return song_list
+    except Exception as e:
+        LOGGER.error(f"Error retrieving song list: {e}")
+        return []
 
 def get_lyrics_from_song():
     """Retrieves lyrics from the specified song URL."""
     try:
         browser.wait_until_element_is_visible('id:lyric-body-text', timeout=10)
-        lyrics_element = browser.find_element('id:lyric-body-text')
-        lyrics = lyrics_element.text.strip()
-        return lyrics
+        return browser.find_element('id:lyric-body-text').text.strip()
     except Exception as e:
-        print(f"Error retrieving lyrics: {e}")
+        LOGGER.error(f"Error retrieving lyrics: {e}")
         return None
     
 def translate_lyrics(lyrics):
-    translated = GoogleTranslator(source='auto', target='vi').translate(lyrics)
-    return translated
+    """Translates lyrics to Vietnamese."""
+    try:
+        return GoogleTranslator(source='auto', target='vi').translate(lyrics)
+    except Exception as e:
+        LOGGER.error(f"Error translating lyrics: {e}")
+        return lyrics
 
 def save_lyrics_to_file(lyrics_text, song_title):
     """Saves lyrics to a file with the specified title."""
-    file_name = f'{song_title}.txt'
-    file_path = os.path.join(os.getcwd(), file_name)
+    file_path = os.path.join(os.getcwd(), f'{song_title}.txt')
     try:
-        # Open the file in write mode and save the lyrics
         with open(file_path, 'w', encoding='utf-8') as file:
             file.write(lyrics_text)
-        print(f"Lyrics saved to {file_path}")
+        args.set_out_arg('trans_song', file_path)
+        LOGGER.info(f"Lyrics saved to {file_path}")
     except Exception as e:
-        print(f"Error saving lyrics to file: {e}")
+        LOGGER.error(f"Error saving lyrics to file: {e}")
+
+################################################################
+# Helper functions
+def enter_text_in_element(selector, text):
+    """Click elements and enter input"""
+    try:
+        browser.click_element_when_visible(selector)
+        time.sleep(0.5)
+        windows.send_keys(text)
+    except Exception as e:
+        LOGGER.error(f"Error interacting with element {selector}: {e}")
+        raise
