@@ -31,11 +31,11 @@ ignoreFiles:
 
 arguments:
   input: 
-    # - name: data_json
-    #   type: File 
-    #   required: False 
-    #   defaultValue: 
-    #   description: Data file
+    - name: data_json
+      type: File 
+      required: False 
+      defaultValue: 
+      description: Data file
     - name: username
       type: String
       required: True 
