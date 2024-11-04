@@ -9,11 +9,9 @@ dependencies:
   - python=3.9.13                     # https://pyreadiness.org/3.9/
   - pip=22.1.2   
   - pip:
-    - rpaframework==23.0.0            # https://rpaframework.org/releasenotes.html
+    - rpaframework==28.5.1            # https://rpaframework.org/releasenotes.html
     - dop-rpaframework==1.2.4 
-    - robocorp
-    - robocorp-browser==2.3.3
+    - robocorp-tasks==1.0.0
+    # - robocorp==1.2.1
     - deep-translator
-    - validators
-    - selenium==4.26.1
     - pyautogui==0.9.54
