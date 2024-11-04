@@ -213,6 +213,7 @@ class Main:
             if self.browser:
                 self.browser.quit()
 
-if __name__ == "__main__":
+@task
+def run_main():
     main = Main()
     main.run_task()
