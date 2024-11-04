@@ -197,6 +197,7 @@ class Main:
         try:
             with open(file_path, 'w', encoding='utf-8') as file:
                 file.write(lyrics_text)
+            self.args.set_out_arg("trans_song", file_path)
             self.LOGGER.info(f"Lyrics saved to {file_path}")
         except Exception as e:
             self.LOGGER.error(f"Error saving lyrics to file: {e}")
@@ -204,7 +205,7 @@ class Main:
     def run_task(self):
         try:
             self.browser = self.get_browser()
-            if not self.check_login():
+            if self.check_login():
                 self.attempt_login()
             self.get_lyrics()
         except Exception as e:

@@ -51,3 +51,8 @@ arguments:
       required: True 
       defaultValue: Test
       description: Name of song
+    - name: trans_song
+      type: File
+      required: True 
+      defaultValue: 
+      description: Translated lyrics
