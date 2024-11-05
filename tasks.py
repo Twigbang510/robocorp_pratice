@@ -18,12 +18,14 @@ class LoginError(Exception):
     """Raised when login fails after retries."""
     pass
 
-class Main:
-    def __init__(self):
+class GetLyrics:
+    def __init__(self, username, password, song_name):
         self.args = ProcessArgument()
         self.assets = Asset()
         self.browser = None
-        
+        self.username = username
+        self.password = password
+        self.song_name = song_name
         stdout = logging.StreamHandler(sys.stdout)
         logging.basicConfig(
             level=logging.DEBUG,
@@ -92,14 +94,14 @@ class Main:
             self.LOGGER.error(f"Error performing login: {e}")
             raise LoginError("Login attempt failed")
 
-    def attempt_login(self):
+    def attempt_login(self, username, password):
         """Attempts to login with retries if login fails."""
         retries = 0
         while retries < RETRIES_COUNT:
             # username = self.assets.get_asset("username")['value']
             # password = self.assets.get_asset("password")['value']
-            username = self.args.get_in_arg("username")['value']
-            password = self.args.get_in_arg("password")['value']
+            # username = self.args.get_in_arg("username")['value']
+            # password = self.args.get_in_arg("password")['value']
             
             if not username or not password:
                 self.LOGGER.debug("Login cancelled due to missing credentials.")
@@ -119,11 +121,11 @@ class Main:
         self.LOGGER.error("Max retries reached. Login failed.")
         raise LoginError("Exceeded maximum login attempts")
 
-    def get_lyrics(self):
+    def get_lyrics(self, song_name):
         """Navigates to the Lyrics.com search page and retrieves lyrics for a specified song."""
         try:
             # song_name = self.assets.get_asset("song_name")['value']
-            song_name = self.args.get_in_arg("song_name")['value']
+            # song_name = self.args.get_in_arg("song_name")['value']
             
             self.enter_text_in_element(By.CSS_SELECTOR, 'input#search.ui-autocomplete-input', song_name)
             search_button = self.wait_for_element(By.CSS_SELECTOR, 'button#page-word-search-button')
@@ -206,8 +208,8 @@ class Main:
         try:
             self.browser = self.get_browser()
             if self.check_login():
-                self.attempt_login()
-            self.get_lyrics()
+                self.attempt_login(self.username, self.password)
+            self.get_lyrics(self.song_name)
         except Exception as e:
             self.LOGGER.error(f"Error when running task: {e}")
         finally:
@@ -215,6 +217,9 @@ class Main:
                 self.browser.quit()
 
 @task
-def run_main():
-    main = Main()
+def run_main(username, password, song_name):
+    main = GetLyrics(username, password, song_name)
     main.run_task()
+
+if __name__ == '__main__':
+    run_main()

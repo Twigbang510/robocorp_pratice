@@ -3,7 +3,17 @@
 
 tasks:
   GetLyrics:
-    shell: python -m robocorp.tasks run tasks.py
+    command:
+      - python
+      - -m
+      - robot
+      - --report
+      - NONE
+      - --outputdir
+      - output
+      - --logtitle
+      - Task log
+      - tasks.robot
   InputForm:
     shell: python -m robocorp.tasks run input_form.py
   OrderRobots:
